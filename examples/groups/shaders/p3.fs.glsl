@@ -2,8 +2,8 @@
 precision highp float;
 #endif
 
-#define PI 3.141592654
-#define PI2 (3.141592654 * 2.)
+#define PI 3.14159265359
+#define PI2 (PI * 2.)
 
 #define PATTERN_DIM 128.0
 
@@ -15,18 +15,31 @@ uniform float radialFactor;
 
 uniform sampler2D sampler1;
 
+float sinc(float x) {
+  x *= PI;
+  if (x == 0.0) return 1.0;
+  return sin(x) / x;
+}
+
+float cubic2(float x) {
+  return sinc(x);
+}
+
 float cubic(float x) {
   x = abs(x);
-  if (x < 1.0) {
-    return 1.0 - x * x * (2.0 + x);
+  const float a = -0.5;
+  if (x <= 1.0) {
+    return ((a + 2.0) * x - (a + 3.0)) * x * x + 1.0;
   } else if (x < 2.0) {
-    return 4.0 - x * (8.0 + x * (5.0 - x));
+    float b = (x - 2.0);
+    return a * (x - 1.0) * b * b;
   } else {
     return 0.0;
   }
 }
 
 vec4 sampDirNearest(float x, float y) {
+//  return vec4(mod(x, 3.0) / 2.0, y / PATTERN_DIM, 0.0, 1.0);
   return texture2D(sampler1, vec2(floor(mod(x, PATTERN_DIM)) / PATTERN_DIM, floor(mod(y, PATTERN_DIM)) / PATTERN_DIM));
 }
 
@@ -66,10 +79,11 @@ vec4 sampCubic(float x, float y) {
 }
 
 vec2 resampling(float xt, float yt) {
-  const float w = 1.154700538379251529; // sqrt(4/3)
-  const float w_2 = 0.5773502691896257; // sqrt(1/3)
-  const float l = 0.3333333333;
-  const float offsetX = 0.21132486540518711774542560; // (1 - sqrt(1/3))/2;
+
+#define w 1.154700538379251529
+#define w_2 0.5773502691896257
+#define l 0.333333333
+#define offsetX 0.21132486540518711774542560
 
   float xtmod = mod(xt, w * PATTERN_DIM) / PATTERN_DIM;
   float ytmod = mod(yt, PATTERN_DIM) / PATTERN_DIM;
@@ -83,7 +97,7 @@ vec2 resampling(float xt, float yt) {
       ytmod < l && ytmod > (w - xtmod) * w_2 ||
       ytmod > l + l && ytmod < 1.0 - (xtmod - w_2) * w_2
       ) {
-      return vec2(xtmod - w_2 + offsetX, ytmod);
+      return vec2(xtmod - 0.36602540378443858225457440, ytmod);
     }
   } else {
     if (ytmod > l && ytmod < l + l ||
@@ -98,29 +112,36 @@ vec2 resampling(float xt, float yt) {
     ytmod -= 1.0;
     xtmod = mod(xtmod + w_2, w);
   }
-
   return vec2(offsetX + (w - xtmod) * 0.5 - ytmod / w, 1.0 - (w - xtmod) / w - ytmod * 0.5);
 }
 
 void main(void) {
-  vec2 pos = gl_FragCoord.xy;
+  float x = gl_FragCoord.x, y = gl_FragCoord.y;
+  float xt =  x * cos(rotation) * scaling.x + y * sin(rotation) * scaling.y;
+  float yt = -x * sin(rotation) * scaling.x + y * cos(rotation) * scaling.y;
 
-  float xt =  pos.x * cos(rotation) * scaling.x + pos.y * sin(rotation) * scaling.y;
-  float yt = -pos.x * sin(rotation) * scaling.x + pos.y * cos(rotation) * scaling.y;
+  vec3 color = vec3(0, 0, 0);
+  const float d = 0.5;
+  float dx = -2.0;
+  for (int i = 0; i < 8; i++) {
+    float cx = cubic(dx);
+    if (cx != 0.0) {
+      float dy = -2.0;
+      for (int j = 0; j < 8; j++) {
+        float cy = cubic(dy);
+        if (cy != 0.0) {
+          vec2 samp = resampling(xt + dx, yt + dy);
+          vec4 co = sampLinear(samp.x, samp.y);
+          color += co.rgb * co.a * cx * cy;
+        }
+        dy += d;
+      }
+    }
+    dx += d;
+  }
+  color *= d * d;
 
-  vec2 samp00 = resampling(xt - 0.5  / PATTERN_DIM, yt - 0.5 / PATTERN_DIM);
-  vec2 samp10 = resampling(xt + 0.5  / PATTERN_DIM, yt - 0.5 / PATTERN_DIM);
-  vec2 samp01 = resampling(xt - 0.5  / PATTERN_DIM, yt + 0.5 / PATTERN_DIM);
-  vec2 samp11 = resampling(xt + 0.5  / PATTERN_DIM, yt + 0.5 / PATTERN_DIM);
-
-  vec4 color00 = sampLinear(samp00.x, samp00.y);
-  vec4 color10 = sampLinear(samp10.x, samp10.y);
-  vec4 color01 = sampLinear(samp01.x, samp01.y);
-  vec4 color11 = sampLinear(samp11.x, samp11.y);
-
-
-  //add a radial blend
-  vec4 colorFrom = (color00 + color10 + color01 + color11) * 0.25;
+  vec4 colorFrom = vec4(color, 1.0);
   vec4 colorTo = colorFrom * radialFactor;
   vec2 uv = gl_FragCoord.xy / resolution.xy;
   float ratio = resolution.y / resolution.x;
