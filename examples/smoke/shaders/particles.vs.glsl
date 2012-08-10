@@ -7,7 +7,7 @@ varying float idx;
 
 uniform sampler2D sampler1, sampler2, sampler3;
 
-uniform float multiple, near, far, platform;
+uniform float multiple, near, far, platform, size;
 uniform vec3 cameraPosition, lightPosition;
 uniform mat4 objectMatrix, viewMatrix, worldMatrix;
 uniform mat4 projectionMatrix;
@@ -23,7 +23,7 @@ void main(void) {
   vec4 samp = texture2D(sampler2, vec2(mod(indices, 256.0) / 256.0, floor(indices / 256.0) /256.0));
   position = samp.xyz * 2. - 1.;
   
-  float ratio = (1. - lightPosition.z) / (position.z - lightPosition.z);
+  float ratio = (0.5 - lightPosition.z) / (position.z - lightPosition.z);
   vec3 shadowPosition = mix(lightPosition, position, ratio);
   vec4 shadowSamp = texture2D(sampler3, (shadowPosition.xy + 1.5) / 3.);
   
@@ -34,7 +34,7 @@ void main(void) {
   gl_Position = projectionMatrix * worldMatrix * vec4(position, 1);
   vPosition = gl_Position;
   float alpha = 1. - pow((1. - life), .5);
-  gl_PointSize = devicePixelRatio * 40. / (gl_Position.z + 1.) * (max(0.5, alpha)); 
+  gl_PointSize = size * devicePixelRatio * 40. / (gl_Position.z + 1.) * (max(0.5, alpha)); 
   depth = (gl_Position.z  - 2.) / 5.;
   if (depth < near || far <= depth) {
     gl_PointSize = 0.;

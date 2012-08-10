@@ -148,14 +148,21 @@ function webGLStart() {
       }
     },
 
+    textures: {
+      src: ['smoke.jpg'],
+      id: ['smoke']
+    },
+    
     onError: function(e) {
       alert(e);
     },
 
     onLoad: function(app) {
 
-      var RESOLUTION = 32, SHADOW_RESO = 512, mult = 2, N = 1;
-      var light = new PhiloGL.Vec3(.5, .75, 1.2);
+      var RESOLUTION = 32, SHADOW_RESO = 512, size = 2,
+          number = 65536 / size / size, platform = -1.5,
+          mult = 1, N = 1;
+      var light = new PhiloGL.Vec3(.5, .75, 2.0);
       PhiloGL.unpack();
       gl = app.gl;
       var velocityField = new SwapTexture(app, {width: RESOLUTION, height: RESOLUTION * RESOLUTION});
@@ -197,8 +204,7 @@ function webGLStart() {
           }
         });
       }
-      var number = 256 * 256,
-          idx = new Float32Array(number);
+      var idx = new Float32Array(number);
       for (i = 0; i < number; i++) {
         idx[i] = i;
       }
@@ -249,7 +255,7 @@ function webGLStart() {
         ylen: 3,
         nx: 2,
         ny: 2,
-        offset: -1,
+        offset: platform,
         program: 'plane',
         textures: ['softShadow-texture'],
         uniforms: {
@@ -273,16 +279,17 @@ function webGLStart() {
 
       var particleModel = new PhiloGL.O3D.Model({
         program: 'particles',
-        textures: [velocityField.getResult(), particleBuffers[0].getResult(), 'shadowMap-texture'],
+        textures: [velocityField.getResult(), particleBuffers[0].getResult(), 'shadowMap-texture', 'smoke'],
         uniforms: {
           FIELD_RESO: RESOLUTION,
           devicePixelRatio: window.devicePixelRatio,
           lightPosition: [light.x, light.y, light.z],
-          multiple: mult
+          multiple: mult,
+          size: size
         },
 
         onBeforeRender: function(program, camera) {
-          this.textures = [velocityField.getResult(), particleBuffers[0].getResult(), 'shadowMap-texture'];
+          this.textures = [velocityField.getResult(), particleBuffers[0].getResult(), 'shadowMap-texture', 'smoke'];
           program.setBuffer('indices', { value: idx });
         },
 
@@ -308,7 +315,7 @@ function webGLStart() {
       function updateParticles() {
         var now = +new Date(),
             dt = now - lastDate,
-            phase = (now - startTime) / 3000 * Math.PI,
+            phase = (now - startTime) / 5000 * Math.PI,
             center = [0.5 + Math.sin(phase) * 0.4, 0.5 + Math.sin(phase * 2.32) * 0.4, 0.3 + Math.sin(phase * 1.2523) * 0.25];
         lastDate = now;
 
@@ -347,7 +354,8 @@ function webGLStart() {
 
         program.use();
         program.setBuffer('indices', { value: idx });
-        program.setUniform('platform', -1);
+        program.setUniform('platform', platform);
+        program.setUniform('size', size);
         program.setUniform('SHADOW_RESO', SHADOW_RESO);
         program.setUniform('lightPosition', [light.x, light.y, light.z]);
 
@@ -368,7 +376,8 @@ function webGLStart() {
         program = app.program.shadowMap;
         program.use();
         program.setBuffer('indices', { value: idx });
-        program.setUniform('platform', 1);
+        program.setUniform('platform', 0.5);
+        program.setUniform('size', size);
         program.setUniform('SHADOW_RESO', SHADOW_RESO / 100);
         program.setUniform('lightPosition', [light.x, light.y, light.z]);
         app.setFrameBuffer('shadowMap', true);
