@@ -159,9 +159,9 @@ function webGLStart() {
 
     onLoad: function(app) {
 
-      var RESOLUTION = 32, SHADOW_RESO = 512, size = 2,
-          number = 65536 / size / size, platform = -1.5,
-          mult = 1, N = 1;
+      var RESOLUTION = 32, SHADOW_RESO = 256, size = 2,
+          number = 30000 / size / size, platform = -1.5,
+          mult = 1, N = 1;// 3615
       var light = new PhiloGL.Vec3(.5, .75, 2.0);
       PhiloGL.unpack();
       gl = app.gl;
@@ -295,7 +295,7 @@ function webGLStart() {
 
         render: function(gl, program, camera) {
           gl.depthMask(0);
-          var K = 32;
+          var K = 64;
           for (var i = K - 1; i >= 0; i--) {
             program.setUniforms({near: i / K, far: (i + 1) / K});
             for (var j = 0; j < mult; j++) {
@@ -351,14 +351,12 @@ function webGLStart() {
 
       function updateShadow() {
         var program = app.program.shadow;
-
         program.use();
         program.setBuffer('indices', { value: idx });
         program.setUniform('platform', platform);
         program.setUniform('size', size);
         program.setUniform('SHADOW_RESO', SHADOW_RESO);
         program.setUniform('lightPosition', [light.x, light.y, light.z]);
-
         app.setFrameBuffer('softShadow', true);
         gl.viewport(0, 0, SHADOW_RESO, SHADOW_RESO);
         gl.clearColor(1, 1, 1, 0);
@@ -370,15 +368,16 @@ function webGLStart() {
         gl.depthMask(0);
         program.setTexture(particleBuffers[0].getResult(), gl.TEXTURE0);
         gl.drawArrays(gl.POINTS, 0, number);
-
         gl.depthMask(1);
         app.setFrameBuffer('softShadow', false);
+        
+        
         program = app.program.shadowMap;
         program.use();
         program.setBuffer('indices', { value: idx });
         program.setUniform('platform', 0.5);
-        program.setUniform('size', size);
-        program.setUniform('SHADOW_RESO', SHADOW_RESO / 100);
+        program.setUniform('size', 1);
+        program.setUniform('SHADOW_RESO', SHADOW_RESO);
         program.setUniform('lightPosition', [light.x, light.y, light.z]);
         app.setFrameBuffer('shadowMap', true);
         gl.viewport(0, 0, SHADOW_RESO, SHADOW_RESO);
@@ -394,7 +393,6 @@ function webGLStart() {
         app.setFrameBuffer('shadowMap', false);
         program.setBuffer('indices', false);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
         gl.bindTexture(gl.TEXTURE_2D, null);
       }
 

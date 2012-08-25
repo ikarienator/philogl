@@ -11,5 +11,5 @@ void main(void) {
   float light = 0.5 * abs(dot(normalize(lightPosition - vPosition.xyz), vNormal.xyz));
   light *= 5. / (.1 + pow(distance(lightPosition, vPosition.xyz), 2.));
   vec3 tex = vec3(texture2D(sampler1, vTexCoord).z);
-  gl_FragColor = vec4(tex * light + 0.3,1);
+  gl_FragColor = vec4(tex * light + 0.5,1);
 }

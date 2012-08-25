@@ -42,7 +42,6 @@ void main(void) {
   }
   color.a *= alpha * alpha;
   color.xyz *= 0.5 + vec3(2, 2, 1.7) / (.1 + pow(distance(lightPosition, position), 2.));
-  color.xyz *= clamp(1. - (shadowSamp.z - samp.z) * 10., 0., 1.) * 0.5 + 0.5;
-  
+  color.xyz *= clamp(1. - (shadowSamp.z - samp.z) * 10., 0., 1.) * 0.9 + 0.5;
   vTexCoord = vec2(0);
 }
